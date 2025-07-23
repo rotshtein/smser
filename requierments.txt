@@ -1,0 +1,4 @@
+async-timeout==5.0.1
+paho-mqtt==2.1.0
+pyserial==3.5
+redis==6.2.0

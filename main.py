@@ -7,7 +7,7 @@ import json
 import paho.mqtt.client as mqtt
 
 # Configuration
-SERIAL_PORT:Final[str] = '/dev/ttyUSB0'  # update as needed\ nBAUDRATE = 115200
+SERIAL_PORT:Final[str] = '/dev/ttyUSB2'  # update as needed\ nBAUDRATE = 115200
 REDIS_HOST:Final[str] = 'localhost'
 REDIS_PORT:Final[int] = 6379
 REDIS_QUEUE:Final[str] = 'sms_queue'
@@ -41,13 +41,18 @@ def read_sms_thread() -> None:
     while True:
         try:
             # list all received SMS
+            
             ser.write(b'AT+CMGL=\"ALL\"\r')
-            time.sleep(1)
-            lines = ser.read(ser.in_waiting or 1000).decode(errors='ignore').splitlines()
+            ser.flush()
+            
+            lines = ser.read(ser.in_waiting or 10).decode(errors='ignore').splitlines()
             messages = []
-            msg = {}
-            for line in lines:
+            msg = None
+            for i, line in enumerate(lines):
                 if line.startswith('+CMGL:'):
+                    if msg and msg.get('body'):
+                        if msg['status'] == 'REC UNREAD':
+                            messages.append(msg)
                     parts = line.split(',')
                     index = parts[0].split(':')[1].strip()
                     status = parts[1].strip().strip('"')
@@ -55,11 +60,12 @@ def read_sms_thread() -> None:
                     date = parts[4].strip().strip('"') + ' ' + parts[5].strip().strip('"')
                     msg = {'index': index, 'status': status, 'sender': sender, 'date': date, 'body': ''}
                 elif msg is not None and line:
-                    # body text
                     msg['body'] += line + '\n'
-                if msg and msg.get('body') and (line == '' or line == lines[-1]):
-                    messages.append(msg)
-                    msg = {}
+                # If last line, append the last message
+                if i == len(lines) - 1 and msg and msg.get('body'):
+                    if msg['status'] == 'REC UNREAD':
+                        messages.append(msg)
+                    msg = None
 
             # enqueue and delete
             for m in messages:
@@ -73,7 +79,7 @@ def read_sms_thread() -> None:
         except Exception as e:
             print(f"Error reading SMS: {e}")
 
-        time.sleep(10)
+        time.sleep(1)
 
 
 def mqtt_publish_thread() -> None:
