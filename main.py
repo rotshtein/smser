@@ -1,15 +1,15 @@
+from ensurepip import version
 import threading
 import time
 from typing import Final
 import logging
 import json
-# import redis
 import click
 from MQTTPublisher import MQTTPublisher
 from RedisClient import RedisClient
 from SMSReader import SMSReader, CheckModemPort
-#import requests
 
+VERSION: Final[str] = "1.0.0"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -92,12 +92,13 @@ def mqtt_publish_thread(mqtt_publisher: MQTTPublisher, redis_client: RedisClient
 @click.option('-p','--serial-port', default=SERIAL_PORT, show_default=True, help='Serial port for the modem')
 @click.option('-b','--baudrate', default=BAUDRATE, show_default=True, type=int, help='Baudrate for the serial port')
 @click.option('-r','--redis-host', default=REDIS_HOST, show_default=True, help='Redis server host')
+@click.option('-v', '--version', is_flag=True, help='Show the version and exit')
 @click.option('-rp','--redis-port', default=REDIS_PORT, show_default=True, type=int, help='Redis server port')
 @click.option('-rq','--redis-queue', default=REDIS_QUEUE, show_default=True, help='Redis queue name for SMS')
 @click.option('-mq','--mqtt-broker', default=MQTT_BROKER, show_default=True, help='MQTT broker address')
 @click.option('-mp','--mqtt-port', default=MQTT_PORT, show_default=True, type=int, help='MQTT broker port')
 @click.option('-mt','--mqtt-topic', default=MQTT_TOPIC, show_default=True, help='MQTT topic for SMS messages')
-def main(log_level, serial_port, baudrate, redis_host, redis_port, redis_queue, mqtt_broker, mqtt_port, mqtt_topic):
+def main(log_level, serial_port, baudrate, redis_host, redis_port, redis_queue, mqtt_broker, mqtt_port, mqtt_topic, version):
     """
     Main entry point for the SMS-to-MQTT service. Initializes the SMS reader,
     MQTT publisher, and Redis client, then starts background threads for reading
@@ -113,6 +114,10 @@ def main(log_level, serial_port, baudrate, redis_host, redis_port, redis_queue, 
     :param mqtt_topic: MQTT topic for SMS messages
     """
     # Set up logging level
+    if version is True:
+        click.echo(f"SMS-to-MQTT Service Version: {VERSION}")
+        return
+    
     numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError(f'Invalid log level: {log_level}')
