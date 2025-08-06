@@ -7,7 +7,7 @@ import json
 import click
 from MQTTPublisher import MQTTPublisher
 from RedisClient import RedisClient
-from SMSReader import SMSReader
+from SMSReader import SMSReader, CheckModemPort
 #import requests
 
 
@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration
-SERIAL_PORT: Final[str] = '/dev/ttyUSB3'  # update as needed
+SERIAL_PORT: Final[str] = ''#'/dev/ttyUSB3'  # update as needed
 BAUDRATE: Final[int] = 115200
 REDIS_HOST: Final[str] = 'localhost'
 REDIS_PORT: Final[int] = 6379
@@ -120,8 +120,15 @@ def main(log_level, serial_port, baudrate, redis_host, redis_port, redis_queue, 
 
     sms_reader = None
     mqtt_publisher = None
-    
     try:
+        if serial_port is None or serial_port == '':
+            try:
+                serial_port = CheckModemPort().find_port()
+                logger.info(f"Using serial port: {serial_port}")
+            except Exception as e:
+                logger.error(f"Failed to find modem port: {e}")
+                return
+
         # Initialize components
         sms_reader = SMSReader(serial_port, baudrate)
         mqtt_publisher = MQTTPublisher(mqtt_broker, mqtt_port, mqtt_topic)
@@ -166,4 +173,10 @@ def main(log_level, serial_port, baudrate, redis_host, redis_port, redis_queue, 
 
 
 if __name__ == '__main__':
+    # import serial.tools.list_ports
+
+    # ports = serial.tools.list_ports.comports()
+    # for port in ports:
+    #     print(f"{port.device} - {port.description}")
+    #test()
     main()

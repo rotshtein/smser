@@ -1,9 +1,49 @@
 import time
 import serial
+import serial.tools.list_ports
 import logging
 from datetime import datetime
 from typing import Generator, Optional, Dict, List
 from contextlib import contextmanager
+
+class CheckModemPort:
+    def __init__(self):
+        self.at_port: str = None
+        self._logger = logging.getLogger(self.__class__.__name__)
+
+    def find_port(self) -> str:
+        # List all available serial ports
+        ports = serial.tools.list_ports.comports()
+        self._logger.debug("Scanning serial ports...\n")
+        for port in ports:
+            self._logger.debug(f"Checking {port.device} ({port.description})...")
+            success = self.check_at_command(port.device)
+            if success:
+                self._logger.info(f"✅ Found AT-compatible modem on {port.device}")
+                self.at_port = port.device
+                break
+            else:
+                self._logger.debug("❌ No response or unexpected reply")
+
+        else:
+            self._logger.warning("\n❗ No modem responded to AT command on available ports.")
+        return self.at_port
+    
+    def check_at_command(self, port, baudrate=115200) -> bool:
+        try:
+            ser = serial.Serial(port=port, baudrate=baudrate, timeout=1)
+            ser.write(b'AT\r')
+            time.sleep(0.5)
+            response = ser.read_all().decode(errors='ignore').strip()
+            ser.close()
+
+            if "OK" in response:
+                return True
+            else:
+                return False
+        except serial.SerialException:
+            return False
+
 
 class SMSReader:
     """Efficient SMS reader with connection management"""
@@ -173,4 +213,10 @@ class SMSReader:
         Close the serial connection to the modem if it is open.
         """
         if self._serial_conn and self._serial_conn.is_open:
-            self._serial_conn.close() 
+            self._serial_conn.close()
+
+
+# if __name__ == '__main__':
+#     cp = CheckModemPort()
+#     x = cp.find_port()
+#     print(x)
