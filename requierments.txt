@@ -1,4 +1,10 @@
 async-timeout==5.0.1
+certifi==2025.7.14
+charset-normalizer==3.4.2
+click==8.2.1
+idna==3.10
 paho-mqtt==2.1.0
 pyserial==3.5
 redis==6.2.0
+requests==2.32.4
+urllib3==2.5.0
